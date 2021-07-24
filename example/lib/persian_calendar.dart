@@ -1,17 +1,60 @@
+import 'package:example/calendar/calendar_widget.dart';
+import 'package:example/day/month_day_theme.dart';
+import 'package:example/header/header_theme.dart';
+import 'package:example/week_day/week_day_builders.dart';
 import 'package:flutter/material.dart';
-import 'package:persian_calendar/src/month_header.dart';
 import 'package:shamsi_date/shamsi_date.dart';
+import 'day/day_builders.dart';
+import 'day/day_theme.dart';
+import 'header/header_builders.dart';
+import 'header/header_click_config.dart';
+import 'header/month_header_widget.dart';
+import 'week_day/days.dart';
+import 'week_day/week_day_widget.dart';
+import 'week_day/week_theme.dart';
 
 class PersianCalendar extends StatefulWidget {
   final Jalali begin;
   final Jalali end;
   final Jalali currentDay;
+  final CalendarDayBuilder? dayBuilder;
+  final MonthDayTheme? daysTheme;
+  final BoxDecoration? weekDecoration;
+  final WeekTheme? weekTheme;
+  final Map<Days, String>? weekDaysLabel;
+  final WeekDayBuilder? weekDayBuilder;
+  final CalendarHeaderBuilder? headerBuilder;
+  final HeaderTheme? headerTheme;
+  final BoxDecoration? headerDecoration;
+  final ValueChanged<Jalali>? onDateChanged;
+  final HeaderClickBehavior? headerClickBehavior;
+  final bool displaySideMonths;
+  final TableCellVerticalAlignment? weekDayVerticalAlignment;
+  final bool swippable;
+  final BoxDecoration? weekDayDecoration;
+  final TableCellVerticalAlignment? daysAlignment;
 
-  PersianCalendar({
-    required this.begin,
-    required this.end,
-    Jalali? currentDay,
-  }) : currentDay = currentDay == null ? Jalali.now() : currentDay;
+  PersianCalendar(
+      {required this.begin,
+      required this.end,
+      Jalali? currentDay,
+      this.dayBuilder,
+      this.daysTheme,
+      this.weekDecoration,
+      this.weekTheme,
+      this.weekDaysLabel,
+      this.weekDayBuilder,
+      this.headerBuilder,
+      this.headerTheme,
+      this.headerDecoration,
+      this.onDateChanged,
+      this.displaySideMonths = true,
+      this.headerClickBehavior,
+      this.weekDayVerticalAlignment,
+      this.swippable = true,
+      this.weekDayDecoration,
+      this.daysAlignment})
+      : currentDay = currentDay == null ? Jalali.now() : currentDay;
 
   @override
   _PersianCalendarState createState() => _PersianCalendarState();
@@ -22,14 +65,15 @@ class _PersianCalendarState extends State<PersianCalendar> {
   late final PageController _pageController;
   int? lastIndex;
   late Jalali lastDate;
+
   @override
   void initState() {
     _onDateChangeNotifier = ValueNotifier(widget.currentDay);
     lastDate = widget.currentDay;
     _pageController = PageController(
-        initialPage:
-            _getMonthBetween(begin: widget.begin, end: widget.currentDay),
-        keepPage: false);
+      initialPage:
+          _getMonthBetween(begin: widget.begin, end: widget.currentDay),
+    );
     super.initState();
   }
 
@@ -46,57 +90,46 @@ class _PersianCalendarState extends State<PersianCalendar> {
         ValueListenableBuilder(
           valueListenable: _onDateChangeNotifier,
           builder: (context, Jalali value, child) {
-            return MonthHeader(value);
+            return MonthHeaderWidget(
+              headerClickBehavior: widget.headerClickBehavior,
+              headerDecoration: widget.headerDecoration,
+              headerBuilder: widget.headerBuilder,
+              headerTheme: widget.headerTheme,
+              pageController: _pageController,
+              beginDate: widget.begin,
+              endDate: widget.end,
+              currentDate: value,
+            );
           },
         ),
-        Expanded(
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: _getMonthBetween(end: widget.end, begin: widget.begin),
-            onPageChanged: (value) {
-              setState(() {
-                if (lastIndex == null) {
-                  lastDate = Jalali(1400, widget.begin.month + value);
-                } else {
-                  final difference = value - lastIndex!;
-                  lastDate = Jalali(1400, lastDate.month + difference);
-                }
-                _onDateChangeNotifier.value =lastDate;
-                lastIndex = value;
-              });
+        WeekDayWidget(
+          weekDayDecoration: widget.weekDayDecoration,
+          weekDayVerticalAlignment: widget.weekDayVerticalAlignment,
+          weekDays: widget.weekDaysLabel,
+          weekDayBuilder: widget.weekDayBuilder,
+          weekTheme: widget.weekTheme,
+        ),
+        Flexible(
+          child: CalendarWidget(
+            daysAlignment: widget.daysAlignment,
+            swippable: widget.swippable,
+            displaySideMonths: widget.displaySideMonths,
+            weekDecoration: widget.weekDecoration,
+            daysTheme: widget.daysTheme,
+            dayBuilder: widget.dayBuilder,
+            pageController: _pageController,
+            onDateChanged: (value) {
+              _onDateChangeNotifier.value = value;
+              widget.onDateChanged?.call(value);
             },
-            itemBuilder: (context, index) {
-              return Container(
-                child: Text(index.toString()),
-              );
-            },
+            initIndex: _pageController.initialPage,
+            beginDate: widget.begin,
+            endDate: widget.end,
+            currentDate: lastDate,
           ),
         ),
       ],
     );
-    // return Column(
-    //   children: [
-
-    //     SizedBox(
-    //       height: 200,
-    //       child: PageView.builder(
-    //         itemCount: _monthCount(),
-    //         itemBuilder: (context, index) {
-    //           return Container(
-    //             height: 100,
-    //             child: Text(index.toString()),
-    //             color: Colors.red,
-    //           );
-    //         },
-    //         onPageChanged: (value) {
-    //           setState(() {
-    //             _onDateChangeNotifier.value = Jalali(1400, value);
-    //           });
-    //         },
-    //       ),
-    //     )
-    //   ],
-    // );
   }
 
   int _getMonthBetween({required Jalali begin, required Jalali end}) {
